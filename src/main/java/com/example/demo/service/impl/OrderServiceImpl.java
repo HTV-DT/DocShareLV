@@ -1,5 +1,6 @@
 package com.example.demo.service.impl;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +27,7 @@ public class OrderServiceImpl implements OrderService {
     public Optional<Order> findByOrderCode(String orderCode) {
         return orderRepository.findByOrderCode(orderCode);
     }
-    
+
     @Override
     public List<Order> getOrdersByUserIdAndStatusTrue(Long userId) {
         return orderRepository.findByUserId(userId);
@@ -39,8 +40,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public List<Order> getAllOrder() {
-       return orderRepository.findAll();
+        List<Order> orders = orderRepository.findAll();
+        Collections.reverse(orders);
+        return orders;
     }
 
-    
 }

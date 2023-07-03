@@ -9,6 +9,7 @@ import com.example.demo.model.Access;
 import com.example.demo.model.Category;
 import com.example.demo.model.Comment;
 import com.example.demo.model.File;
+import com.example.demo.model.Like;
 import com.example.demo.model.Role;
 import com.example.demo.model.RoleName;
 import com.example.demo.model.UserFile;
@@ -56,6 +57,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -165,19 +167,23 @@ public class GoogleDriveController {
                 .collect(Collectors.toSet());
 
         Category categoryName = fileService.findByCategoryName(category);
+        if (Objects.isNull(categoryName) || categoryName.getCategoryName().isEmpty()) {
+
+            return ResponseEntity.badRequest().body("Category not found or null");
+        }
         File file = new File(title, fileUpload.getContentType(),
                 roundedMb, description, user, categoryName, tags);
         String link = fileService.uploadFile(fileUpload, user.getUsername(), Boolean.parseBoolean(shared));
         String linkImg = fileService.uploadFile(fileImg, user.getUsername(), true);
-        PDDocument document;
+        // PDDocument document;
 
-        try {
-            document = PDDocument.load(fileUpload.getInputStream());
-            int page = document.getNumberOfPages();
-            file.setView(page);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // try {
+        // document = PDDocument.load(fileUpload.getInputStream());
+        // int page = document.getNumberOfPages();
+        // file.setView(page);
+        // } catch (IOException e) {
+        // e.printStackTrace();
+        // }
         userService.save(user);
 
         file.setLink(link);
@@ -196,7 +202,7 @@ public class GoogleDriveController {
         if (!optionalUser.isPresent()) {
             throw new NotFoundException("User not found with id: " + fileForm.getUser_id());
         }
-        Users user=optionalUser.get();
+        Users user = optionalUser.get();
         fileService.deleteFile(fileForm.getDrive_id(), fileForm.getFile_id(), user, true);
         return new ResponseEntity<>("delete successfully", HttpStatus.OK);
     }
@@ -230,9 +236,9 @@ public class GoogleDriveController {
         if (accesses == null || accesses.isEmpty()) {
 
             Set<Role> roles = user.getRoles();
-            Role adminRole = roleService.findByName(RoleName.ADMIN)
+            Role userRole = roleService.findByName(RoleName.USER)
                     .orElseThrow(() -> new RuntimeException("Role not found"));
-            roles.remove(adminRole);
+            roles.remove(userRole);
             user.setRoles(roles);
             userService.save(user);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new HashMap<String, Object>() {
@@ -317,6 +323,33 @@ public class GoogleDriveController {
         }
     }
 
+    @GetMapping("/list/tag")
+    @JsonView(Views.FileInfoView.class)
+    public ResponseEntity<List<File>> getFileTag(@RequestParam("file_id") Long file_id) {
+        try {
+            Optional<File> optionalFile = fileService.findById(file_id);
+            if (!optionalFile.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            File file = optionalFile.get();
+            List<File> files = fileService.searchFilesByTag(file);
+            return new ResponseEntity<>(files, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+       @GetMapping("/list/category")
+    @JsonView(Views.FileInfoView.class)
+    public ResponseEntity<List<File>> getFileCategory(@RequestParam("id") Long id) {
+        try {
+            List<File> files = fileService.searchFilesByCategory(id);
+            return new ResponseEntity<>(files, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @GetMapping("/TopFiles")
     @JsonView(Views.FileInfoView.class)
     public ResponseEntity<List<File>> getTopFiles() {
@@ -368,7 +401,18 @@ public class GoogleDriveController {
         }
     }
 
-    @GetMapping("/getFile/id")
+    // @GetMapping("/getFile/id")
+    // public ResponseEntity<FileResponse> getFile(@RequestParam("file_id") Long file_id,@RequestParam("user_id") Long user_id) {
+    //     Optional<File> optionalFile = fileService.findById(file_id);
+    //     File file = optionalFile
+    //             .orElseThrow(() -> new org.springframework.security.acls.model.NotFoundException("File not found"));
+    //     file.setView(file.getView() + 1);
+    //     fileService.save(file);
+    //     FileResponse fileResponse= new FileResponse(file,likeService.existsByUserIdAndFileId(user_id,file_id));
+    //     return new ResponseEntity<>(fileResponse, HttpStatus.OK);
+    // }
+
+      @GetMapping("/getFile/id")
     public ResponseEntity<File> getFile(@RequestParam("file_id") Long file_id) {
         Optional<File> optionalFile = fileService.findById(file_id);
         File file = optionalFile

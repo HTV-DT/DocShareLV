@@ -266,4 +266,13 @@ public class Users {
         this.maxUpload = maxUpload;
     }
 
+    public boolean hasFriendWithId(Long friendId) {
+        for (Users friend : friends) {
+            if (friend.getId().equals(friendId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 }

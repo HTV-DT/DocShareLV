@@ -102,8 +102,11 @@ public class PaypalController {
 				throw new NotFoundException("User not found");
 			}
 			Payment payment = service.createPayment(package1.getPrice(), "USD", "paypal",
-					"sale", "test", "http://localhost:8080/" + CANCEL_URL + "?id=" + payReponse.getFile_id(),
-					"http://localhost:8080/" + SUCCESS_URL + "?id=" + payReponse.getFile_id());
+					"sale", "test",
+					"http://localhost:8080/" + CANCEL_URL + "?id=" + payReponse.getFile_id() + "&name="
+							+ payReponse.getName(),
+					"http://localhost:8080/" + SUCCESS_URL + "?id=" + payReponse.getFile_id() + "&name="
+							+ payReponse.getName());
 
 			Set<Access> userAccesses = user.getAccesses();
 			List<Access> filteredAccesses = userAccesses.stream()
@@ -143,14 +146,19 @@ public class PaypalController {
 	}
 
 	@GetMapping(value = CANCEL_URL)
-	public String cancelPay(@RequestParam("id") String id) {
+	public String cancelPay(@RequestParam("id") String id, @RequestParam("name") String name) {
 
-		return "redirect:http://localhost:3000/fileDetail/" + id + "?status=false";
+		if (id == null) {
+			return "redirect:http://localhost:3000/" + name + "/order?status=false";
+		} else {
+			return "redirect:http://localhost:3000/fileDetail/" + id + "?status=false";
+		}
+
 	}
 
 	@GetMapping(value = SUCCESS_URL)
 	public String successPay(@RequestParam("paymentId") String paymentId, @RequestParam("PayerID") String payerId,
-			@RequestParam("id") String id) {
+			@RequestParam("name") String name, @RequestParam("id") String id) {
 		try {
 			Payment payment = service.executePayment(paymentId, payerId);
 			System.out.println(payment.toJSON());
@@ -174,13 +182,13 @@ public class PaypalController {
 			accessService.save(access);
 
 			// Check if the user has the admin role
-			boolean isAdmin = user.getRoles().contains(RoleName.ADMIN);
+			boolean isUser = user.getRoles().contains(RoleName.USER);
 
-			if (!isAdmin) {
+			if (!isUser) {
 				Set<Role> roles = new HashSet<>();
-				Role adminRole = roleService.findByName(RoleName.ADMIN)
+				Role userRole = roleService.findByName(RoleName.USER)
 						.orElseThrow(() -> new RuntimeException("Role not found"));
-				roles.add(adminRole);
+				roles.add(userRole);
 				user.setRoles(roles);
 				user = userService.save(user);
 
@@ -188,7 +196,12 @@ public class PaypalController {
 
 			if (payment.getState().equals("approved")) {
 				// Redirect to the file detail page with the file_id parameter
-				return "redirect:http://localhost:3000/fileDetail/" + id + "?status=true";
+				if ("null".equals(id)) {
+					return "redirect:http://localhost:3000/" + name + "/order?status=true";
+				}
+				else{
+					return "redirect:http://localhost:3000/fileDetail/" + id + "?status=true";
+				}
 			}
 		} catch (PayPalRESTException e) {
 			System.out.println(e.getMessage());
@@ -244,5 +257,4 @@ public class PaypalController {
 		return ResponseEntity.ok(savedPackage);
 	}
 
-	
 }

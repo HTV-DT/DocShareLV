@@ -39,8 +39,16 @@ public class AccessServicelImpl implements AccessService {
         List<Access> validAccessList = new ArrayList<>();
 
         for (Access access : accessList) {
-            if (now.isBefore(access.getCreatedAt()) && access.getNumOfAccess() > 0) {
-                validAccessList.add(access);
+
+            if (now.isBefore(access.getCreatedAt())) {
+                if (access.getPackages().getId() == 2) {
+                    validAccessList.add(access);
+                } else if (access.getNumOfAccess() > 0) {
+                    validAccessList.add(access);
+                } else {
+                    accessRepository.delete(access);
+                }
+
             } else {
                 accessRepository.delete(access);
             }
@@ -53,5 +61,4 @@ public class AccessServicelImpl implements AccessService {
         return accessRepository.findByUserId(userId);
     }
 
-    
 }

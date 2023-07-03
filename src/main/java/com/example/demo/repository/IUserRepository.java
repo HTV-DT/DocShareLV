@@ -28,4 +28,6 @@ public interface IUserRepository extends JpaRepository<Users, Long> {
 // @Query("SELECT u.id FROM Users u INNER JOIN user_friends uf ON u.id = uf.user_id WHERE uf.friend_id = :user_id")
 // public List<Object[]> following(@Param("user_id") Long user_id);
     long count();
+
+    
 }

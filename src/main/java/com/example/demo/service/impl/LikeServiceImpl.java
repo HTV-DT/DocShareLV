@@ -70,6 +70,15 @@ public class LikeServiceImpl implements ILikeService {
         }
     }
   
+   @Override
+    public List<Like> findByFileId(Long fileId){
+return likeRepository.findByFileId(fileId);
+  }
+
+   @Override
+    public boolean existsByUserIdAndFileId(Long userId, Long fileId){
+return likeRepository.existsByUserIdAndFileId(userId, fileId);
+   }
  }
 
 

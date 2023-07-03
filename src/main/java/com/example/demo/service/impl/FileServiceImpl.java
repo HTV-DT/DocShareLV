@@ -5,14 +5,17 @@ import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.acls.model.NotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.model.Category;
 import com.example.demo.model.File;
+import com.example.demo.model.Tag;
 import com.example.demo.model.Users;
 import com.example.demo.repository.CategoryRepository;
 import com.example.demo.repository.FileRepository;
@@ -112,17 +115,20 @@ public class FileServiceImpl implements IFileService {
         }
 
         File file = optionalFile.get();
+
         if (file != null) {
             if (file.getUser().getId() == user.getId()) {
                 if (file.getLink().equals(id)) {
-                    googleFileManager.deleteFileOrFolder(id);
-                    fileRepository.deleteById(id_file);
-                    user.setMaxUpload(user.getMaxUpload() + file.getFileSize());
-                    userServiceImpl.save(user);
-                    if (actor == true) {
-                        userServiceImpl.sendDelete(user, file);
-                    }
-                    return "File deleted successfully.";
+                   
+                        googleFileManager.deleteFileOrFolder(id);
+                        fileRepository.deleteById(id_file);
+                        user.setMaxUpload(user.getMaxUpload() + file.getFileSize());
+                        userServiceImpl.save(user);
+                        if (actor == true) {
+                            userServiceImpl.sendDelete(user, file);
+                        }
+                        return "File deleted successfully.";
+                  
                 } else {
                     throw new NotFoundException("File not found");
                 }
@@ -133,6 +139,7 @@ public class FileServiceImpl implements IFileService {
         } else {
             throw new NotFoundException("File not found");
         }
+
     }
 
     @Override
@@ -160,6 +167,16 @@ public class FileServiceImpl implements IFileService {
         return fileRepository.sumView();
     }
 
-    // Thêm trường repostContent và cập nhật phương thức repost
+    @Override
+    public List<File> searchFilesByTag(File selectedFile) {
+        // get the tags of the selected file
+        Set<Tag> tags = selectedFile.getTags();
+        // find all files that have at least one common tag with the selected file
+          return fileRepository.findByTagsIn(tags, PageRequest.of(0, 20));
+    }
 
+    @Override
+    public List<File> searchFilesByCategory(Long id) {
+return fileRepository.findFilesByCategoryId(id, PageRequest.of(0, 20));
+    }
 }

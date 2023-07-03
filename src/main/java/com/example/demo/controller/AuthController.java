@@ -90,35 +90,15 @@ public class AuthController {
         }
         Users users = new Users(signUpForm.getName(), signUpForm.getUsername(), signUpForm.getEmail(),
                 passwordEncoder.encode(signUpForm.getPassword()));
-        Set<String> strRoles = signUpForm.getRoles();
-        Set<Role> roles = new HashSet<>();
-        // strRoles.forEach(role ->{
-        // switch (role){
-        // case "admin":
-        // Role adminRole = roleService.findByName(RoleName.ADMIN).orElseThrow( ()-> new
-        // RuntimeException("Role not found"));
-        // roles.add(adminRole);
-        // break;
-        // case "pm":
-        // Role pmRole = roleService.findByName(RoleName.PM).orElseThrow( ()-> new
-        // RuntimeException("Role not found"));
-        // roles.add(pmRole);
-        // break;
-        // default:
-        // Role userRole = roleService.findByName(RoleName.USER).orElseThrow( ()-> new
-        // RuntimeException("Role not found"));
-        // roles.add(userRole);
-        // }
-        // });
+
         users.setMaxUpload((double) 2048);
-        		
+
         users.setAvatar("https://thuvienlogo.com/data/01/logo-con-gau-08.jpg");
-        Role userRole = roleService.findByName(RoleName.USER).orElseThrow(() -> new RuntimeException("Role not found"));
-        roles.add(userRole);
+
         String randomCode = RandomString.make(64);
         users.setVerificationCode(randomCode);
         users.setEnabled(false);
-        users.setRoles(roles);
+
         userService.register(users, getSiteURL(request));
         return new ResponseEntity<>(new ResponseMessage("Create success!"), HttpStatus.OK);
     }
@@ -135,7 +115,7 @@ public class AuthController {
                 new JwtResponse(token, userPrinciple.getName(), userPrinciple.getAuthorities(), userPrinciple.getId()));
     }
 
-    @PutMapping()
+    @PutMapping("/update/profile")
     public ResponseEntity<Users> updateUser(@RequestParam("fileImg") MultipartFile fileImg,
             @RequestParam("user_id") Long user_id,
             @RequestParam("name") String name,
@@ -161,7 +141,7 @@ public class AuthController {
     @GetMapping("/verify")
     public void verifyUser(@Param("code") String code, HttpServletResponse response) throws IOException {
         if (userService.verify(code)) {
-             //return "redirect:/http://localhost:3000/login"; kiểu String
+            // return "redirect:/http://localhost:3000/login"; kiểu String
             response.sendRedirect("http://localhost:3000/login");
         } else {
             response.sendRedirect("http://localhost:3000/login");
@@ -232,6 +212,30 @@ public class AuthController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
+    // @GetMapping("/user")
+    // public ResponseEntity<?> getUser(@RequestParam("user_id") Long user_id,
+    // @RequestParam("fiend_id") Long friend_id) {
+    // Users user = userService.findById(user_id)
+    // .orElseThrow(() -> new NotFoundException("User not found"));
+    // Users friendUsers = userService.findById(friend_id)
+    // .orElseThrow(() -> new NotFoundException("User not found"));
+    // List<FriendResponse> friendDTOs = new ArrayList<>();
+    // for (Users friend : user.getFriends()) {
+    // friendDTOs.add(new FriendResponse(friend));
+    // }
+
+    // List<FriendResponse> followingDTOs = new ArrayList<>();
+
+    // for (Users following : userService.getFollowing(user_id)) {
+    // followingDTOs.add(new FriendResponse(following));
+    // }
+    // boolean hasFriend = friendUsers.hasFriendWithId(user_id);
+
+    // return new ResponseEntity<>(new UserResponse(user.getId(),
+    // user.getUsername(),
+    // user.getAvatar(), user.getFiles(), friendDTOs, hasFriend), HttpStatus.OK);
+    // }
+
     @GetMapping("/user")
     public ResponseEntity<?> getUser(@RequestParam("user_id") Long user_id) {
         Users user = userService.findById(user_id)
@@ -247,31 +251,31 @@ public class AuthController {
             followingDTOs.add(new FriendResponse(following));
         }
 
-        return new ResponseEntity<>(new UserResponse(user.getId(), user.getUsername(),
-                user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs), HttpStatus.OK);
+        return new ResponseEntity<>(new UserResponse(user.getId(),
+                user.getUsername(),
+                user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs),
+                HttpStatus.OK);
     }
 
-    
-
- 
     @PutMapping("/active")
     public ResponseEntity<?> activeUser(@RequestBody UserForm userForm, HttpServletRequest request)
             throws MessagingException, UnsupportedEncodingException {
-      Users user = userService.findById(userForm.getId())
+        Users user = userService.findById(userForm.getId())
                 .orElseThrow(() -> new NotFoundException("User not found"));
-                user.setEnabled(userForm.isEnabled());
-                userService.save(user);
-                
-                  if(userForm.isEnabled()==false){
-                    userService.sendActive(user);
-                }
-        return new ResponseEntity<>(new ResponseMessage("User enabled!"), HttpStatus.OK);
-    }   
+        user.setEnabled(userForm.isEnabled());
+        userService.save(user);
 
-    //  @GetMapping("/following")
-	// public ResponseEntity<List<Object[]>> gettoatlPrice(@RequestBody UserForm userForm) {
-    //     Long user_id=userForm.getId();
-	// 	List<Object[]> list = userService.following(user_id);
-	// 	return ResponseEntity.ok(list);
-	// }
+        if (userForm.isEnabled() == false) {
+            userService.sendActive(user);
+        }
+        return new ResponseEntity<>(new ResponseMessage("User enabled!"), HttpStatus.OK);
+    }
+
+    // @GetMapping("/following")
+    // public ResponseEntity<List<Object[]>> gettoatlPrice(@RequestBody UserForm
+    // userForm) {
+    // Long user_id=userForm.getId();
+    // List<Object[]> list = userService.following(user_id);
+    // return ResponseEntity.ok(list);
+    // }
 }

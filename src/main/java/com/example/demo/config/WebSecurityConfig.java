@@ -52,7 +52,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         httpSecurity
                 .cors().and().csrf().disable()
                 .authorizeRequests()
-                .antMatchers("/file/download/**").hasAuthority("ADMIN") // restrict access to admins only
+                .antMatchers("/file/download/**").hasAuthority("USER") // restrict access to admins only
                 .antMatchers("/**").permitAll()
                 .anyRequest().authenticated()
                 .and()

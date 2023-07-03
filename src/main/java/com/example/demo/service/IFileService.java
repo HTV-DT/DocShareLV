@@ -27,4 +27,7 @@ public interface IFileService {
     List<File> getTopFile();
     List<File> getViewFile();
     Double sumView();	
+     public List<File> searchFilesByTag(File selectedFile);
+
+     public List<File> searchFilesByCategory(Long id);
 }
