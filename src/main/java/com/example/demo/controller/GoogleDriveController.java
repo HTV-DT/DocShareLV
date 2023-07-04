@@ -216,6 +216,7 @@ public class GoogleDriveController {
                                      // canchange it
         }
         fileService.deleteFile(fileForm.getDrive_id(), fileForm.getFile_id(), user, false);
+
         return new ResponseEntity<>("delete successfully", HttpStatus.OK);
 
     }
@@ -298,8 +299,13 @@ public class GoogleDriveController {
 
     @PostMapping("/search/tagname")
     public ResponseEntity<?> Search(@RequestParam("tagName") String tagName) {
-        List<Tag> tags = tagServiceImpl.search(tagName);
-        return new ResponseEntity<>(tags, HttpStatus.OK);
+
+        try {
+            List<Tag> tags = tagServiceImpl.search(tagName);
+            return new ResponseEntity<>(tags, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @GetMapping("/category/list")
@@ -339,7 +345,7 @@ public class GoogleDriveController {
         }
     }
 
-       @GetMapping("/list/category")
+    @GetMapping("/list/category")
     @JsonView(Views.FileInfoView.class)
     public ResponseEntity<List<File>> getFileCategory(@RequestParam("id") Long id) {
         try {
@@ -402,17 +408,20 @@ public class GoogleDriveController {
     }
 
     // @GetMapping("/getFile/id")
-    // public ResponseEntity<FileResponse> getFile(@RequestParam("file_id") Long file_id,@RequestParam("user_id") Long user_id) {
-    //     Optional<File> optionalFile = fileService.findById(file_id);
-    //     File file = optionalFile
-    //             .orElseThrow(() -> new org.springframework.security.acls.model.NotFoundException("File not found"));
-    //     file.setView(file.getView() + 1);
-    //     fileService.save(file);
-    //     FileResponse fileResponse= new FileResponse(file,likeService.existsByUserIdAndFileId(user_id,file_id));
-    //     return new ResponseEntity<>(fileResponse, HttpStatus.OK);
+    // public ResponseEntity<FileResponse> getFile(@RequestParam("file_id") Long
+    // file_id,@RequestParam("user_id") Long user_id) {
+    // Optional<File> optionalFile = fileService.findById(file_id);
+    // File file = optionalFile
+    // .orElseThrow(() -> new
+    // org.springframework.security.acls.model.NotFoundException("File not found"));
+    // file.setView(file.getView() + 1);
+    // fileService.save(file);
+    // FileResponse fileResponse= new
+    // FileResponse(file,likeService.existsByUserIdAndFileId(user_id,file_id));
+    // return new ResponseEntity<>(fileResponse, HttpStatus.OK);
     // }
 
-      @GetMapping("/getFile/id")
+    @GetMapping("/getFile/id")
     public ResponseEntity<File> getFile(@RequestParam("file_id") Long file_id) {
         Optional<File> optionalFile = fileService.findById(file_id);
         File file = optionalFile
