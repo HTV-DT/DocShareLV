@@ -41,7 +41,7 @@ public class AccessServicelImpl implements AccessService {
         for (Access access : accessList) {
 
             if (now.isBefore(access.getCreatedAt())) {
-                if (access.getPackages().getId() == 2) {
+                if (access.getPackages().getDowloads() == 0) {
                     validAccessList.add(access);
                 } else if (access.getNumOfAccess() > 0) {
                     validAccessList.add(access);

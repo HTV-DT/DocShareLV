@@ -38,6 +38,18 @@ public class PackageServiceImpl implements PackageService {
     }
 
   
+ @Override
+ public List<Package> findPackagesByType() {
+    return packageRepository.findByType();
+}
 
-
+ @Override
+public boolean hasActivePackageWithType() {
+    return packageRepository.existsByActiveAndType(true, 2);
+}
+ @Override
+public Package getActivePackageWithType() {
+    Optional<Package> optionalPackage = packageRepository.findByActiveAndType(true, 2);
+    return optionalPackage.orElse(null);
+}
 }

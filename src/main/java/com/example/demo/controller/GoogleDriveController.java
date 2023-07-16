@@ -10,6 +10,7 @@ import com.example.demo.model.Category;
 import com.example.demo.model.Comment;
 import com.example.demo.model.File;
 import com.example.demo.model.Like;
+import com.example.demo.model.Package;
 import com.example.demo.model.Role;
 import com.example.demo.model.RoleName;
 import com.example.demo.model.UserFile;
@@ -20,6 +21,7 @@ import com.example.demo.service.CommentService;
 import com.example.demo.service.DownloadService;
 import com.example.demo.service.ILikeService;
 import com.example.demo.service.IRepostService;
+import com.example.demo.service.PackageService;
 import com.example.demo.service.impl.FileServiceImpl;
 import com.example.demo.service.impl.LikeServiceImpl;
 import com.example.demo.service.impl.RoleServiceImpl;
@@ -56,6 +58,7 @@ import java.time.ZonedDateTime;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -93,6 +96,9 @@ public class GoogleDriveController {
 
     @Autowired
     RoleServiceImpl roleService;
+
+    @Autowired
+    PackageService packageService;
 
     private ConvertByteToMB convertByteToMB;
 
@@ -175,20 +181,45 @@ public class GoogleDriveController {
                 roundedMb, description, user, categoryName, tags);
         String link = fileService.uploadFile(fileUpload, user.getUsername(), Boolean.parseBoolean(shared));
         String linkImg = fileService.uploadFile(fileImg, user.getUsername(), true);
-        // PDDocument document;
 
-        // try {
-        // document = PDDocument.load(fileUpload.getInputStream());
-        // int page = document.getNumberOfPages();
-        // file.setView(page);
-        // } catch (IOException e) {
-        // e.printStackTrace();
-        // }
         userService.save(user);
 
         file.setLink(link);
         file.setLinkImg(linkImg);
         fileService.save(file);
+        List<Package> packages =packageService.findPackagesByType();
+        if (!packages.isEmpty()) {
+            LocalDateTime startDate = LocalDateTime.now();
+            Access access = new Access();
+            Optional<Package> optionalPackage = packageService.findById(packages.get(0).getId());
+            Package package1 = optionalPackage.isPresent() ? optionalPackage.get() : null;
+            try {
+                if (package1 == null) {
+                    throw new NotFoundException("package not found");
+                }
+            } catch (NotFoundException e) {
+
+            }
+            access.setUser(user);
+            access.setPackages(package1);
+            access.setNumOfAccess(1);
+            access.setCreatedAt(startDate);
+
+            accessService.save(access);
+
+            // Check if the user has the admin role
+            boolean isUser = user.getRoles().contains(RoleName.USER);
+
+            if (!isUser) {
+                Set<Role> roles = new HashSet<>();
+                Role userRole = roleService.findByName(RoleName.USER)
+                        .orElseThrow(() -> new RuntimeException("Role not found"));
+                roles.add(userRole);
+                user.setRoles(roles);
+                user = userService.save(user);
+
+            }
+        }
 
         return ResponseEntity.ok(file);
     }
@@ -249,10 +280,12 @@ public class GoogleDriveController {
                 }
             });
         }
+
         Access accessWithPackageId2 = accesses.stream()
-                .filter(access -> access.getPackages().getId() == 2)
+                .filter(access -> access.getPackages().getDowloads() == 0)
                 .findFirst()
                 .orElse(null);
+
         if (accessWithPackageId2 != null) {
             fileService.downloadFile(id, response.getOutputStream());
             downloadService.saveDownload(user_id, file_id);
@@ -260,7 +293,7 @@ public class GoogleDriveController {
         }
 
         Access closestCreatedAtAccess = accesses.stream()
-                .sorted(Comparator.comparing(Access::getCreatedAt).reversed())
+                .sorted(Comparator.comparing(Access::getCreatedAt))
                 .findFirst()
                 .orElse(null);
         if (closestCreatedAtAccess != null) {
@@ -321,6 +354,17 @@ public class GoogleDriveController {
     @GetMapping("/ListFiles")
     @JsonView(Views.FileInfoView.class)
     public ResponseEntity<List<File>> getFiles() {
+        try {
+            List<File> files = fileService.getAllFiles();
+            return new ResponseEntity<>(files, HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    @GetMapping("/ListFiles/Admin")
+    @JsonView(Views.FileInfoViewAdmin.class)
+    public ResponseEntity<List<File>> getFilesAdmin() {
         try {
             List<File> files = fileService.getAllFiles();
             return new ResponseEntity<>(files, HttpStatus.OK);
@@ -407,27 +451,23 @@ public class GoogleDriveController {
         }
     }
 
-    // @GetMapping("/getFile/id")
-    // public ResponseEntity<FileResponse> getFile(@RequestParam("file_id") Long
-    // file_id,@RequestParam("user_id") Long user_id) {
-    // Optional<File> optionalFile = fileService.findById(file_id);
-    // File file = optionalFile
-    // .orElseThrow(() -> new
-    // org.springframework.security.acls.model.NotFoundException("File not found"));
-    // file.setView(file.getView() + 1);
-    // fileService.save(file);
-    // FileResponse fileResponse= new
-    // FileResponse(file,likeService.existsByUserIdAndFileId(user_id,file_id));
-    // return new ResponseEntity<>(fileResponse, HttpStatus.OK);
-    // }
-
     @GetMapping("/getFile/id")
-    public ResponseEntity<File> getFile(@RequestParam("file_id") Long file_id) {
+    public ResponseEntity<FileResponse> getFile(@RequestParam("file_id") Long file_id,
+            @RequestParam("user_id") Long user_id) {
         Optional<File> optionalFile = fileService.findById(file_id);
         File file = optionalFile
                 .orElseThrow(() -> new org.springframework.security.acls.model.NotFoundException("File not found"));
         file.setView(file.getView() + 1);
         fileService.save(file);
+        FileResponse fileResponse = new FileResponse(file, likeService.existsByUserIdAndFileId(user_id, file_id));
+        return new ResponseEntity<>(fileResponse, HttpStatus.OK);
+    }
+
+    @GetMapping("/getFile/id/admin")
+    public ResponseEntity<File> getFile(@RequestParam("file_id") Long file_id) {
+        Optional<File> optionalFile = fileService.findById(file_id);
+        File file = optionalFile
+                .orElseThrow(() -> new org.springframework.security.acls.model.NotFoundException("File not found"));
         return new ResponseEntity<>(file, HttpStatus.OK);
     }
 

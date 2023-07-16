@@ -21,8 +21,8 @@ import java.util.Set;
         @UniqueConstraint(columnNames = {
                 "email"
         })
-}) 
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Users {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,23 +31,24 @@ public class Users {
     @Size(min = 3, max = 50)
     private String name;
     @NotBlank
-    @Size(min = 3,max = 50)
+    @Size(min = 3, max = 50)
     private String username;
     @NotBlank
     @Size(max = 50)
     @Email
     private String email;
     @NotBlank
-    @Size(min = 6,max = 100)
+    @Size(min = 6, max = 100)
     private String password;
     @Lob
     private String avatar;
     @Column(name = "verification_code", length = 64)
-	private String verificationCode;
-	private boolean enabled;
-    
+    private String verificationCode;
+    private boolean enabled;
     private Double maxUpload;
-
+    private String about;
+    private String linksocial;
+    private String numberPhone;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
@@ -59,30 +60,27 @@ public class Users {
 
     @JsonIgnoreProperties("friends")
     @ManyToMany
-    @JoinTable(
-        name = "user_friends",
-        joinColumns = @JoinColumn(name = "user_id"),
-        inverseJoinColumns = @JoinColumn(name = "friend_id"))
+    @JoinTable(name = "user_friends", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "friend_id"))
     private Set<Users> friends = new HashSet<>();
 
     @JsonIgnore
-    @OneToMany(fetch = FetchType.LAZY,mappedBy="user",cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
     Set<Comment> comments;
 
     @JsonIgnore
-    @OneToMany(fetch = FetchType.LAZY,mappedBy="user",cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
     Set<Download> downloads;
 
     @JsonIgnore
-    @OneToMany(fetch = FetchType.LAZY,mappedBy="user",cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
     Set<Order> orders;
 
     @JsonIgnore
-    @OneToMany(fetch = FetchType.LAZY,mappedBy="user",cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
     Set<Like> likes;
 
     @JsonIgnore
-    @OneToMany(fetch = FetchType.LAZY,mappedBy="user",cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.ALL)
     Set<Access> accesses;
 
     public Users() {
@@ -98,26 +96,21 @@ public class Users {
         this.roles = roles;
     }
 
-    public Users( String name, String username,  String avatar) {
+    public Users(String name, String username, String avatar) {
         this.name = name;
         this.username = username;
         this.avatar = avatar;
     }
 
-    public Users(   @NotBlank
-                    @Size(min = 3, max = 50) String name,
-                    @NotBlank
-                    @Size(min = 3,max = 50) String username,
-                    @Size(max = 50)
-                    @Email String email,
-                    @NotBlank
-                    @Size(min = 6,max = 100)String encode) {
+    public Users(@NotBlank @Size(min = 3, max = 50) String name,
+            @NotBlank @Size(min = 3, max = 50) String username,
+            @Size(max = 50) @Email String email,
+            @NotBlank @Size(min = 6, max = 100) String encode) {
         this.name = name;
         this.username = username;
         this.email = email;
         this.password = encode;
     }
-    
 
     public Long getId() {
         return id;
@@ -175,7 +168,6 @@ public class Users {
         this.roles = roles;
     }
 
-
     public String getVerificationCode() {
         return this.verificationCode;
     }
@@ -196,7 +188,6 @@ public class Users {
         this.enabled = enabled;
     }
 
-
     public List<File> getFiles() {
         return this.Files;
     }
@@ -206,7 +197,7 @@ public class Users {
     }
 
     public Set<Users> getFriends() {
-        
+
         return this.friends;
     }
 
@@ -257,7 +248,6 @@ public class Users {
         this.accesses = accesses;
     }
 
-
     public Double getMaxUpload() {
         return this.maxUpload;
     }
@@ -273,6 +263,30 @@ public class Users {
             }
         }
         return false;
+    }
+
+    public String getAbout() {
+        return this.about;
+    }
+
+    public void setAbout(String about) {
+        this.about = about;
+    }
+
+    public String getLinksocial() {
+        return this.linksocial;
+    }
+
+    public void setLinksocial(String linksocial) {
+        this.linksocial = linksocial;
+    }
+
+    public String getNumberPhone() {
+        return this.numberPhone;
+    }
+
+    public void setNumberPhone(String numberPhone) {
+        this.numberPhone = numberPhone;
     }
 
 }

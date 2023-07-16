@@ -17,6 +17,7 @@ public class PackageForm {
     private int dowloads;
     private Double storageSize;
     private boolean active;
+    private boolean type;
 
     public PackageForm() {
     }

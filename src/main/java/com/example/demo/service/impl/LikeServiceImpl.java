@@ -27,7 +27,7 @@ public class LikeServiceImpl implements ILikeService {
     @Autowired
     IUserRepository userRepository;
 
-    public boolean save(Long userId,Long fileId) {
+    public boolean save(Long userId, Long fileId) {
         Users user = userRepository.findById(userId).orElse(null);
         File file = fileRepository.findById(fileId).orElse(null);
         if (user != null && file != null) {
@@ -53,33 +53,35 @@ public class LikeServiceImpl implements ILikeService {
 
     @Override
     public boolean deleteLikeById(UserFile id) {
-        Like like = likeRepository.findByUserIdAndFileId(id.getUserId(),id.getFileId());
-        
+        Like like = likeRepository.findByUserIdAndFileId(id.getUserId(), id.getFileId());
+
         if (like != null) {
             likeRepository.delete(like);
-            
+
             File file = fileRepository.findById(id.getFileId()).orElse(null);
             if (file != null) {
                 file.setLikeFile(file.getLikeFile() - 1);
                 fileRepository.save(file);
             }
-            
+
             return true;
         } else {
             return false;
         }
     }
-  
-   @Override
-    public List<Like> findByFileId(Long fileId){
-return likeRepository.findByFileId(fileId);
-  }
 
-   @Override
-    public boolean existsByUserIdAndFileId(Long userId, Long fileId){
-return likeRepository.existsByUserIdAndFileId(userId, fileId);
-   }
- }
+    @Override
+    public List<Like> findByFileId(Long fileId) {
+        return likeRepository.findByFileId(fileId);
+    }
 
+    @Override
+    public boolean existsByUserIdAndFileId(Long userId, Long fileId) {
+        return likeRepository.existsByUserIdAndFileId(userId, fileId);
+    }
 
-    
+    public Long countTotalLikes() {
+        return likeRepository.countTotalLikes();
+    }   
+
+}

@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -54,11 +56,15 @@ public class UserServiceImpl implements IUserService {
 
 	@Override
 	public void register(Users user, String siteURL) throws UnsupportedEncodingException, MessagingException {
-		String randomCode = RandomString.make(64);
-		user.setVerificationCode(randomCode);
-		user.setEnabled(false);
 
-		userRepository.save(user);
+		if (user.isEnabled() == true) {
+
+		} else {
+			String randomCode = RandomString.make(64);
+			user.setVerificationCode(randomCode);
+			user.setEnabled(false);
+			userRepository.save(user);
+		}
 
 		sendVerificationEmail(user, siteURL);
 	}
@@ -68,40 +74,62 @@ public class UserServiceImpl implements IUserService {
 		String toAddress = user.getEmail();
 		String fromAddress = "sender@example.com"; // Replace with your actual email address
 		String senderName = "DocShare";
-		String subject = "Please verify your registration";
-		String content = "Dear [[name]],<br>"
-				+ "Thank you for registering with our website. To complete the registration process,<br>"
-				+ "Please click the link below to verify your registration:<br>"
-				+ "<h3><a href=\"[[URL]]\" target=\"_self\">VERIFY</a></h3>"
-				+ "Thank you,<br>"
-				+ "DocShare.";
+		String subject;
+		String content;
+		if (user.getEnabled() == true) {
+			subject = "The request to change password for DocShare";
+			content = "Dear [[name]],<br>"
+					+ "Your Discord password can be reset by clicking the button below. If you did<br>"
+					+ "not request a new password, please ignore this email.<br>"
+					+ "<h3><a href=\"[[URL]]\" target=\"_self\">Change Password</a></h3>"
+					+ "Thank you,<br>"
+					+ "DocShare.";
+		} else {
+			subject = "Please verify your registration";
+			content = "Dear [[name]],<br>"
+					+ "Thank you for registering with our website. To complete the registration process,<br>"
+					+ "Please click the link below to verify your registration:<br>"
+					+ "<h3><a href=\"[[URL]]\" target=\"_self\">VERIFY</a></h3>"
+					+ "Thank you,<br>"
+					+ "DocShare.";
+		}
 
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message);
+		String modifiedContent = content.replace("[[name]]", user.getName());
+		String verifyURL = siteURL + "/api/auth/verify?code=" + user.getVerificationCode() + "&password="
+				+ user.getPassword();
 
-		helper.setFrom(fromAddress, senderName);
-		helper.setTo(toAddress);
-		helper.setSubject(subject);
+		final String modified = modifiedContent.replace("[[URL]]", verifyURL);
 
-		content = content.replace("[[name]]", user.getName());
-		String verifyURL = siteURL + "/api/auth/verify?code=" + user.getVerificationCode();
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.submit(() -> {
+			try {
+				MimeMessage message = mailSender.createMimeMessage();
+				MimeMessageHelper helper = new MimeMessageHelper(message);
 
-		content = content.replace("[[URL]]", verifyURL);
+				helper.setFrom(fromAddress, senderName);
+				helper.setTo(toAddress);
+				helper.setSubject(subject);
 
-		helper.setText(content, true);
+				helper.setText(modified, true);
 
-		mailSender.send(message);
+				mailSender.send(message);
+				System.out.println("Email has been sent");
+			} catch (MessagingException | UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		});
 
-		System.out.println("Email has been sent");
+		executor.shutdown();
 	}
 
 	@Override
-	public Boolean verify(String verificationCode) {
+	public Boolean verify(String verificationCode, String password) {
 		Users user = userRepository.findByVerificationCode(verificationCode);
 
-		if (user == null || user.isEnabled()) {
+		if (user == null) {
 			return false;
 		} else {
+			user.setPassword(password);
 			user.setVerificationCode(null);
 			user.setEnabled(true);
 			try {
@@ -129,7 +157,7 @@ public class UserServiceImpl implements IUserService {
 	@Override
 	public List<Users> getFollowing(Long user_id) {
 
-		return userRepository.findAll();
+		return userRepository.following(user_id);
 	}
 
 	@Override
@@ -165,20 +193,28 @@ public class UserServiceImpl implements IUserService {
 				+ "Best regards,<br>"
 				+ "The Docshare Team";
 
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message);
+		final String modifiedContent = content.replace("[[name]]", user.getName());
 
-		helper.setFrom(fromAddress, senderName);
-		helper.setTo(toAddress);
-		helper.setSubject(subject);
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.submit(() -> {
+			try {
+				MimeMessage message = mailSender.createMimeMessage();
+				MimeMessageHelper helper = new MimeMessageHelper(message);
 
-		content = content.replace("[[name]]", user.getName());
+				helper.setFrom(fromAddress, senderName);
+				helper.setTo(toAddress);
+				helper.setSubject(subject);
 
-		helper.setText(content, true);
+				helper.setText(modifiedContent, true);
 
-		mailSender.send(message);
+				mailSender.send(message);
+				System.out.println("Email has been sent");
+			} catch (MessagingException | UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		});
 
-		System.out.println("Email has been sent");
+		executor.shutdown();
 	}
 
 	@Override
@@ -191,9 +227,9 @@ public class UserServiceImpl implements IUserService {
 	// return userRepository.following(user_id);
 	// }
 
-		@Override
+	@Override
 	public void sendDelete(Users user, File file) throws UnsupportedEncodingException, MessagingException {
-		 sendDeleteEmail(user, file);
+		sendDeleteEmail(user, file);
 	}
 
 	private void sendDeleteEmail(Users user, File file)
@@ -216,21 +252,34 @@ public class UserServiceImpl implements IUserService {
 				+ "Best regards,<br>"
 				+ "The Docshare Team";
 
-		MimeMessage message = mailSender.createMimeMessage();
-		MimeMessageHelper helper = new MimeMessageHelper(message);
-
-		helper.setFrom(fromAddress, senderName);
-		helper.setTo(toAddress);
-		helper.setSubject(subject);
-
 		content = content.replace("[[name]]", user.getName());
-		content = content.replace("[[namefile]]", file.getFileName());
 
-		helper.setText(content, true);
+		String modifiedContent = content.replace("[[namefile]]", file.getFileName());
 
-		mailSender.send(message);
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.submit(() -> {
+			try {
+				MimeMessage message = mailSender.createMimeMessage();
+				MimeMessageHelper helper = new MimeMessageHelper(message);
 
-		System.out.println("Email has been sent");
+				helper.setFrom(fromAddress, senderName);
+				helper.setTo(toAddress);
+				helper.setSubject(subject);
+
+				helper.setText(modifiedContent, true);
+
+				mailSender.send(message);
+				System.out.println("Email has been sent");
+			} catch (MessagingException | UnsupportedEncodingException e) {
+				e.printStackTrace();
+			}
+		});
+
+		executor.shutdown();
 	}
 
+	@Override
+	public Optional<Users> findByEmail(String email) {
+		return userRepository.findByEmail(email);
+	}
 }

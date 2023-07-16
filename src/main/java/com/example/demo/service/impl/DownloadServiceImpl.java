@@ -44,4 +44,8 @@ public class DownloadServiceImpl implements DownloadService{
         }
     }
    
+    @Override
+    public Long getTotalDownloadsForSystem() {
+        return downloadRepository.getTotalDownloadsForSystem();
+    }
 }

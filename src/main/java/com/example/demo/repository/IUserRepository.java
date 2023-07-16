@@ -19,15 +19,17 @@ public interface IUserRepository extends JpaRepository<Users, Long> {
 
     Boolean existsByEmail(String email);
 
-    @Query("SELECT u FROM Users u WHERE u.email = ?1")
-    public Users findByEmail(String email);
+    // @Query("SELECT u FROM Users u WHERE u.email = ?1")
+    // public Users findByEmail(String email);
 
     @Query("SELECT u FROM Users u WHERE u.verificationCode = ?1")
     public Users findByVerificationCode(String code);
 
-// @Query("SELECT u.id FROM Users u INNER JOIN user_friends uf ON u.id = uf.user_id WHERE uf.friend_id = :user_id")
-// public List<Object[]> following(@Param("user_id") Long user_id);
+    @Query("SELECT u FROM Users u JOIN u.friends f WHERE f.id = :userId")
+    List<Users> following(@Param("userId") Long userId);
+
     long count();
 
-    
+    public Optional<Users> findByEmail(String email);
+
 }

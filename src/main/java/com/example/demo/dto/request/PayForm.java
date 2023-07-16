@@ -11,12 +11,8 @@ public class PayForm {
     private Long file_id;
     private String name;
 
-
     public PayForm() {
     }
-  
-
- 
 
     public PayForm(Long user_id, Long package_id, Long file_id, String name) {
         this.user_id = user_id;
@@ -24,5 +20,5 @@ public class PayForm {
         this.file_id = file_id;
         this.name = name;
     }
-    
+
 }

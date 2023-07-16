@@ -15,7 +15,7 @@ import com.example.demo.model.Tag;
 
 @Repository
 public interface FileRepository extends JpaRepository<File, Long> {
-  @Query(value = "SELECT DISTINCT File.* FROM File JOIN file_tag ON File.id = file_tag.file_id JOIN tag ON file_tag.tag_id = tag.tag_id WHERE tag.tag_name LIKE %?1% ", nativeQuery = true)
+  @Query(value = "SELECT DISTINCT f.* FROM File f JOIN file_tag ft ON f.id = ft.file_id JOIN tag t ON ft.tag_id = t.tag_id JOIN Users u ON f.user_id = u.id WHERE (t.tag_name LIKE %?1% OR f.file_name LIKE %?1% OR u.name LIKE %?1%) GROUP BY f.id ORDER BY COUNT(DISTINCT t.tag_name) DESC, f.file_name LIKE %?1% DESC, u.name LIKE %?1% DESC", nativeQuery = true)
   List<File> search(String keyword);
 
   List<File> findByCategoryId(Long status);
@@ -37,5 +37,7 @@ public interface FileRepository extends JpaRepository<File, Long> {
 
   @Query("SELECT f FROM File f WHERE f.category.id = :categoryId")
   List<File> findFilesByCategoryId(@Param("categoryId") Long categoryId, Pageable pageable);
-  
+
+
+
 }

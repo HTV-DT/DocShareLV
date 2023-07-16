@@ -54,6 +54,8 @@ public class Package {
 
     private boolean active;
 
+    private int type;//0 Ko giới hạn , 1 giới hạn ,2 upload
+
     //   @Transient
     // private Long total_user;
 
@@ -74,6 +76,7 @@ public class Package {
         this.dowloads = dowloads;
         this.storageSize = storageSize;
     }
+
 public int getOrderCount() {
     int count = 0;
     if (orders != null) {

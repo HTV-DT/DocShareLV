@@ -26,10 +26,10 @@ import lombok.Setter;
 public class Tag {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonView(Views.FileInfoView.class)
+    @JsonView({ Views.FileInfoView.class, Views.FileInfoViewAdmin.class })
     private Long tagId;
     @NotBlank
- @JsonView(Views.FileInfoView.class)
+    @JsonView({ Views.FileInfoView.class, Views.FileInfoViewAdmin.class })
     private String tagName;
     @JsonIgnore
     @ManyToMany(mappedBy = "tags")

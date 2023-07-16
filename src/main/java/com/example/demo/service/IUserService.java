@@ -22,7 +22,7 @@ public interface IUserService {
 
     Users save(Users users);
 
-    Boolean verify(String verificationCode);
+    Boolean verify(String verificationCode, String password);
 
     void register(Users user, String siteURL) throws UnsupportedEncodingException, MessagingException;
 
@@ -34,7 +34,10 @@ public interface IUserService {
 
     public Long getUserCount();
 
-   public void sendActive(Users user) throws UnsupportedEncodingException, MessagingException;
-public void sendDelete(Users user, File file) throws UnsupportedEncodingException, MessagingException ;
-//    public List<Object[]> following(@Param("user_id") Long user_id);
+    public Optional<Users> findByEmail(String email);
+
+    public void sendActive(Users user) throws UnsupportedEncodingException, MessagingException;
+
+    public void sendDelete(Users user, File file) throws UnsupportedEncodingException, MessagingException;
+    // public List<Object[]> following(@Param("user_id") Long user_id);
 }

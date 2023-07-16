@@ -1,10 +1,10 @@
 package com.example.demo.controller;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -13,9 +13,7 @@ import java.util.stream.Collectors;
 
 import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
-import javax.validation.Valid;
 
-import org.apache.pdfbox.contentstream.operator.state.Save;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,10 +26,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriUtils;
 
 import com.example.demo.dto.request.PackageForm;
 import com.example.demo.dto.request.PayForm;
 import com.example.demo.dto.request.SignUpForm;
+import com.example.demo.dto.response.ErrorResponse;
 import com.example.demo.dto.response.FileResponse;
 import com.example.demo.dto.response.PayReponse;
 import com.example.demo.dto.response.ResponseMessage;
@@ -90,7 +90,7 @@ public class PaypalController {
 	@PostMapping("/pay")
 	public ResponseEntity<String> payment(@RequestBody PayForm payReponse) {
 		try {
-
+			String encodedString = UriUtils.encode(payReponse.getName(), StandardCharsets.UTF_8);
 			Optional<Users> optionalUser = userService.findById(payReponse.getUser_id());
 			Users user = optionalUser.isPresent() ? optionalUser.get() : null;
 			Optional<Package> optionalPackage = packageService.findById(payReponse.getPackage_id());
@@ -104,9 +104,9 @@ public class PaypalController {
 			Payment payment = service.createPayment(package1.getPrice(), "USD", "paypal",
 					"sale", "test",
 					"http://localhost:8080/" + CANCEL_URL + "?id=" + payReponse.getFile_id() + "&name="
-							+ payReponse.getName(),
+							+ encodedString,
 					"http://localhost:8080/" + SUCCESS_URL + "?id=" + payReponse.getFile_id() + "&name="
-							+ payReponse.getName());
+							+ encodedString);
 
 			Set<Access> userAccesses = user.getAccesses();
 			List<Access> filteredAccesses = userAccesses.stream()
@@ -117,7 +117,7 @@ public class PaypalController {
 					.collect(Collectors.toList());
 			LocalDateTime startDate = null;
 			LocalDateTime oldestAccessDate = null;
-			if (!sortedAccesses.isEmpty() && package1.getId() != 1) {
+			if (!sortedAccesses.isEmpty()) {
 				Access oldestAccess = sortedAccesses.get(sortedAccesses.size() - 1);
 				oldestAccessDate = oldestAccess.getCreatedAt();
 				startDate = oldestAccessDate;
@@ -148,11 +148,11 @@ public class PaypalController {
 	@GetMapping(value = CANCEL_URL)
 	public String cancelPay(@RequestParam("id") String id, @RequestParam("name") String name) {
 
-		if (id == null) {
-			return "redirect:http://localhost:3000/" + name + "/order?status=false";
-		} else {
-			return "redirect:http://localhost:3000/fileDetail/" + id + "?status=false";
-		}
+	if ("null".equals(id)) {
+					return "redirect:http://localhost:3000/" + name + "/order?status=false";
+				} else {
+					return "redirect:http://localhost:3000/fileDetail/" + id + "?status=false";
+				}
 
 	}
 
@@ -198,8 +198,7 @@ public class PaypalController {
 				// Redirect to the file detail page with the file_id parameter
 				if ("null".equals(id)) {
 					return "redirect:http://localhost:3000/" + name + "/order?status=true";
-				}
-				else{
+				} else {
 					return "redirect:http://localhost:3000/fileDetail/" + id + "?status=true";
 				}
 			}
@@ -222,15 +221,30 @@ public class PaypalController {
 	}
 
 	@PostMapping("/package/add")
-	public ResponseEntity<Package> savePackage(@RequestBody PackageForm packageForm, HttpServletRequest request)
+	public ResponseEntity<?> savePackage(@RequestBody PackageForm packageForm, HttpServletRequest request)
 			throws MessagingException, UnsupportedEncodingException {
+				if(packageForm.isType()==true){
+					if(packageService.hasActivePackageWithType()==true){
+						return ResponseEntity.badRequest().body(new ErrorResponse("There is already an active package with type Charged per upload."));
+					}
+				}
 		Package package1 = new Package(packageForm.getName(), packageForm.getDuration(), packageForm.getPrice(),
 				packageForm.getDowloads(), packageForm.getStorageSize());
+				if(packageForm.getDowloads()==0){
+					package1.setType(0);
+				}else if(packageForm.getDowloads()>0){
+					package1.setType(1);
+				}
+				if(packageForm.isType() == true){
+					package1.setType(2);
+					package1.setPrice((double) 0);
+				}
 		return new ResponseEntity<>(packageService.save(package1), HttpStatus.OK);
 	}
 
 	@PutMapping("/package/update")
 	public ResponseEntity<Package> updatePackage(@RequestBody PackageForm packageForm) {
+		
 		Optional<Package> optionalPackage = packageService.findById(packageForm.getId());
 		if (!optionalPackage.isPresent()) {
 			return ResponseEntity.notFound().build();
@@ -241,12 +255,30 @@ public class PaypalController {
 		package1.setDuration(packageForm.getDuration());
 		package1.setPrice(packageForm.getPrice());
 		package1.setStorageSize(packageForm.getStorageSize());
+			if(packageForm.getDowloads()==0){
+					package1.setType(0);
+				}else if(packageForm.getDowloads()>0){
+					package1.setType(1);
+				}else if(packageForm.isType()==true){
+					package1.setType(2);
+				}
 		Package savedPackage = packageService.save(package1);
 		return ResponseEntity.ok(savedPackage);
 	}
 
 	@PutMapping("package/active")
-	public ResponseEntity<Package> setActive(@RequestBody PackageForm packageForm) {
+	public ResponseEntity<?> setActive(@RequestBody PackageForm packageForm) {
+	
+		Package activePackage = packageService.getActivePackageWithType();
+		if (activePackage != null) {
+			if(activePackage.getId()==packageForm.getId()){
+
+			}else{
+				return ResponseEntity.badRequest().body(new ErrorResponse("There is already an active package with type Charged per upload."));
+			}
+			
+		}
+				
 		Optional<Package> optionalPackage = packageService.findById(packageForm.getId());
 		if (!optionalPackage.isPresent()) {
 			return ResponseEntity.notFound().build();

@@ -1,3 +1,4 @@
+
 package com.example.demo.controller;
 
 import java.util.List;
@@ -18,7 +19,9 @@ import com.example.demo.model.Order;
 import com.example.demo.service.AccessService;
 import com.example.demo.service.OrderService;
 import com.example.demo.service.OrderdetailService;
+import com.example.demo.service.impl.DownloadServiceImpl;
 import com.example.demo.service.impl.FileServiceImpl;
+import com.example.demo.service.impl.LikeServiceImpl;
 import com.example.demo.service.impl.OrderServiceImpl;
 import com.example.demo.service.impl.OrderdetailServiceImpl;
 import com.example.demo.service.impl.UserServiceImpl;
@@ -45,6 +48,12 @@ public class OrderController {
   @Autowired
   private OrderdetailServiceImpl orderDetailService;
 
+  
+@Autowired
+  private DownloadServiceImpl downloadServiceImpl;
+
+  @Autowired
+  private LikeServiceImpl likeServiceImpl;
   @GetMapping("/userAbout")
   @JsonView(Views.OrderInfoView.class)
   public ResponseEntity<List<Order>> getOrdersByUserIdAndStatusTrue(@RequestParam("user_id") Long userId) {
@@ -52,7 +61,7 @@ public class OrderController {
     return ResponseEntity.ok(listOrders);
   }
 
-   @GetMapping("/list")
+  @GetMapping("/list")
   @JsonView(Views.OrderInfoView.class)
   public ResponseEntity<List<Order>> getListOrders() {
     List<Order> listOrders = orderService.getAllOrder();
@@ -72,14 +81,15 @@ public class OrderController {
     response.setTotal_view(fileService.sumView());
     response.setTotal_order(orderService.countByOrderStatusTrue());
     response.setTotal_price(orderDetailService.sumPrice());
+    response.setTotal_dowload(downloadServiceImpl.getTotalDownloadsForSystem());
+    response.setTotal_like(likeServiceImpl.countTotalLikes());
     return ResponseEntity.ok(response);
   }
 
- @GetMapping("/MonthPrice")
-	public ResponseEntity<List<Object[]>> gettoatlPrice() {
-		List<Object[]> list = orderDetailService.findMonthlyTotalPrices();
-		return ResponseEntity.ok(list);
-	}
+  @GetMapping("/MonthPrice")
+  public ResponseEntity<List<Object[]>> gettoatlPrice() {
+    List<Object[]> list = orderDetailService.findMonthlyTotalPrices();
+    return ResponseEntity.ok(list);
+  }
 
-  
 }

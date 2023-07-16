@@ -36,13 +36,14 @@ public class FileResponse {
     private Category category;
     Set<Tag> tags = new HashSet<>();
     boolean like;
-
+    private String userName;
 
     public FileResponse() {
     }
 
-
-    public FileResponse(Long id, String fileName, String fileType, Double fileSize, Date uploadDate, Date modifyDate, String description, String link, int view, int likeFile, int repostCount, String linkImg, Long userId, FriendResponse user, Category category, Set<Tag> tags) {
+    public FileResponse(Long id, String fileName, String fileType, Double fileSize, Date uploadDate, Date modifyDate,
+            String description, String link, int view, int likeFile, int repostCount, String linkImg, Long userId,
+            FriendResponse user, Category category, Set<Tag> tags) {
         this.id = id;
         this.fileName = fileName;
         this.fileType = fileType;
@@ -59,11 +60,13 @@ public class FileResponse {
         this.user = user;
         this.category = category;
         this.tags = tags;
+
     }
 
-    public FileResponse(File file,boolean like) {
+    public FileResponse(File file, boolean like) {
         this.id = file.getId();
         this.fileName = file.getFileName();
+        this.userName = file.getUserName();
         this.fileType = file.getFileType();
         this.fileSize = file.getFileSize();
         this.uploadDate = file.getUploadDate();
@@ -79,8 +82,5 @@ public class FileResponse {
         this.tags = file.getTags();
         this.like = like;
     }
-  
-
 
 }
-

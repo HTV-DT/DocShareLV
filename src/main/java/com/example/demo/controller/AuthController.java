@@ -30,6 +30,7 @@ import org.springframework.security.acls.model.NotFoundException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +50,10 @@ import javax.mail.MessagingException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Pattern;
+import javax.validation.constraints.Size;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -93,8 +98,6 @@ public class AuthController {
 
         users.setMaxUpload((double) 2048);
 
-        users.setAvatar("https://thuvienlogo.com/data/01/logo-con-gau-08.jpg");
-
         String randomCode = RandomString.make(64);
         users.setVerificationCode(randomCode);
         users.setEnabled(false);
@@ -116,19 +119,36 @@ public class AuthController {
     }
 
     @PutMapping("/update/profile")
-    public ResponseEntity<Users> updateUser(@RequestParam("fileImg") MultipartFile fileImg,
-            @RequestParam("user_id") Long user_id,
-            @RequestParam("name") String name,
-            @RequestParam("password") String password) {
+    public ResponseEntity<?> updateUser(@RequestParam(value = "fileImg", required = false) MultipartFile fileImg,
+            @RequestParam(value = "user_id", required = false) Long user_id,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "about", required = false) @Size(max = 250) String about,
+            @RequestParam(value = "numberPhone", required = false) @Pattern(regexp = "^\\d{10,11}$") String numberPhone,
+            @RequestParam(value = "linksocial", required = false) @Size(max = 250) String linksocial) {
+        if (user_id == null) {
+            return ResponseEntity.badRequest().body("User ID must not be null");
+        }
         Optional<Users> optionalUser = userService.findById(user_id);
         if (!optionalUser.isPresent()) {
             return ResponseEntity.notFound().build();
         }
         Users user = optionalUser.get();
-        user.setName(name);
-        user.setPassword(password);
-        String linkImg = fileService.uploadFile(fileImg, user.getUsername(), true);
-        user.setAvatar(linkImg);
+        if (name != null) {
+            user.setName(name);
+        }
+        if (about != null) {
+            user.setAbout(about);
+        }
+        if (numberPhone != null) {
+            user.setNumberPhone(numberPhone);
+        }
+        if (linksocial != null) {
+            user.setLinksocial(linksocial);
+        }
+        if (fileImg != null) {
+            String linkImg = fileService.uploadFile(fileImg, user.getUsername(), true);
+            user.setAvatar(linkImg);
+        }
         Users savedUser = userService.save(user);
         return ResponseEntity.ok(savedUser);
     }
@@ -139,8 +159,9 @@ public class AuthController {
     }
 
     @GetMapping("/verify")
-    public void verifyUser(@Param("code") String code, HttpServletResponse response) throws IOException {
-        if (userService.verify(code)) {
+    public void verifyUser(@Param("code") String code, @Param("password") String password, HttpServletResponse response)
+            throws IOException {
+        if (userService.verify(code, password)) {
             // return "redirect:/http://localhost:3000/login"; kiểu String
             response.sendRedirect("http://localhost:3000/login");
         } else {
@@ -176,11 +197,10 @@ public class AuthController {
     }
 
     @DeleteMapping("/unfollow")
-    public ResponseEntity<ResponseMessage> deleteUnfollow(@RequestParam("user_id") Long userId,
-            @RequestParam("friend_id") Long friendId) {
+    public ResponseEntity<ResponseMessage> deleteUnfollow(@RequestBody FollowForm followForm) {
         // Tìm người dùng và bạn bè theo ID
-        Optional<Users> optionalUser = userService.findById(userId);
-        Optional<Users> optionalFriend = userService.findById(friendId);
+        Optional<Users> optionalUser = userService.findById(followForm.getUser_id());
+        Optional<Users> optionalFriend = userService.findById(followForm.getFriend_id());
 
         // Kiểm tra xem người dùng và bạn bè có tồn tại hay không
         if (!optionalUser.isPresent()) {
@@ -212,12 +232,38 @@ public class AuthController {
         return new ResponseEntity<>(users, HttpStatus.OK);
     }
 
+    @GetMapping("/user")
+    public ResponseEntity<?> getUser(@RequestParam("friend_id") Long user_id, // Tác giả
+            @RequestParam("user_id") Long friend_id) { // About me
+        Users user = userService.findById(user_id)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        boolean hasFriend;
+        if (friend_id == 0) {
+            hasFriend = false;
+        } else {
+            Users friendUsers = userService.findById(friend_id)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+            hasFriend = friendUsers.hasFriendWithId(user_id);
+        }
+        List<FriendResponse> friendDTOs = new ArrayList<>();
+        for (Users friend : user.getFriends()) {
+            friendDTOs.add(new FriendResponse(friend));
+        }
+
+        List<FriendResponse> followingDTOs = new ArrayList<>();
+
+        for (Users following : userService.getFollowing(user_id)) {
+            followingDTOs.add(new FriendResponse(following));
+        }
+
+        return new ResponseEntity<>(new UserResponse(user.getId(),
+                user.getUsername(),
+                user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs, hasFriend), HttpStatus.OK);
+    }
+
     // @GetMapping("/user")
-    // public ResponseEntity<?> getUser(@RequestParam("user_id") Long user_id,
-    // @RequestParam("fiend_id") Long friend_id) {
+    // public ResponseEntity<?> getUser(@RequestParam("user_id") Long user_id) {
     // Users user = userService.findById(user_id)
-    // .orElseThrow(() -> new NotFoundException("User not found"));
-    // Users friendUsers = userService.findById(friend_id)
     // .orElseThrow(() -> new NotFoundException("User not found"));
     // List<FriendResponse> friendDTOs = new ArrayList<>();
     // for (Users friend : user.getFriends()) {
@@ -229,15 +275,14 @@ public class AuthController {
     // for (Users following : userService.getFollowing(user_id)) {
     // followingDTOs.add(new FriendResponse(following));
     // }
-    // boolean hasFriend = friendUsers.hasFriendWithId(user_id);
 
     // return new ResponseEntity<>(new UserResponse(user.getId(),
     // user.getUsername(),
-    // user.getAvatar(), user.getFiles(), friendDTOs, hasFriend), HttpStatus.OK);
+    // user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs),
+    // HttpStatus.OK);
     // }
-
-    @GetMapping("/user")
-    public ResponseEntity<?> getUser(@RequestParam("user_id") Long user_id) {
+    @GetMapping("/user/about")
+    public ResponseEntity<UserResponse> getUserAbout(@RequestParam("user_id") Long user_id) {
         Users user = userService.findById(user_id)
                 .orElseThrow(() -> new NotFoundException("User not found"));
         List<FriendResponse> friendDTOs = new ArrayList<>();
@@ -253,8 +298,8 @@ public class AuthController {
 
         return new ResponseEntity<>(new UserResponse(user.getId(),
                 user.getUsername(),
-                user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs),
-                HttpStatus.OK);
+                user.getAvatar(), user.getFiles(), friendDTOs, followingDTOs, user.getEmail(), user.getAbout(),
+                user.getNumberPhone(), user.getLinksocial(), user.getName()), HttpStatus.OK);
     }
 
     @PutMapping("/active")
@@ -271,11 +316,47 @@ public class AuthController {
         return new ResponseEntity<>(new ResponseMessage("User enabled!"), HttpStatus.OK);
     }
 
-    // @GetMapping("/following")
-    // public ResponseEntity<List<Object[]>> gettoatlPrice(@RequestBody UserForm
-    // userForm) {
-    // Long user_id=userForm.getId();
-    // List<Object[]> list = userService.following(user_id);
-    // return ResponseEntity.ok(list);
-    // }
+    @PutMapping("/user/password")
+    public ResponseEntity<?> changePassword(@RequestBody UserForm userForm, HttpServletRequest request)
+            throws MessagingException, UnsupportedEncodingException {
+
+        Optional<Users> optionalUser = userService.findByUsername(userForm.getUsername());
+        if (!optionalUser.isPresent()) {
+            optionalUser = userService.findByEmail(userForm.getUsername());
+            if (!optionalUser.isPresent()) {
+                throw new NotFoundException("User not found");
+            }
+        }
+
+        Users user = optionalUser.get();
+        String randomCode = RandomString.make(64);
+        user.setVerificationCode(randomCode);
+        userService.save(user);
+
+        user.setPassword(passwordEncoder.encode(userForm.getPassword()));
+        userService.register(user, getSiteURL(request));
+        return new ResponseEntity<>(new ResponseMessage("User enabled!"), HttpStatus.OK);
+    }
+
+    @PostMapping("/signin/admin")
+    public ResponseEntity<?> loginAdmin(@Valid @RequestBody SignInForm signInForm) {
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(signInForm.getUsername(), signInForm.getPassword()));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        String token = jwtProvider.createToken(authentication);
+        UserPrinciple userPrinciple = (UserPrinciple) authentication.getPrincipal();
+        // Check if the user has the admin role
+        boolean isAdmin = false;
+        for (GrantedAuthority authority : userPrinciple.getAuthorities()) {
+            if (authority.getAuthority().equals("ADMIN")) {
+                isAdmin = true;
+                break;
+            }
+        }
+        if (!isAdmin) {
+            return ResponseEntity.badRequest().body("Error: You do not have permission to perform this action.");
+        }
+        return ResponseEntity.ok(
+                new JwtResponse(token, userPrinciple.getName(), userPrinciple.getAuthorities(), userPrinciple.getId()));
+    }
 }

@@ -10,6 +10,8 @@ public class StatisticsResponse {
     private float total_price;
     private Long total_user;
     private Double total_view;
+     private Long total_dowload;
+       private Long total_like;
 
 
     public StatisticsResponse() {

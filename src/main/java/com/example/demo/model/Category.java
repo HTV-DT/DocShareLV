@@ -19,18 +19,17 @@ import com.fasterxml.jackson.annotation.JsonView;
 import lombok.Getter;
 import lombok.Setter;
 
-
 @Entity
 @Getter
 @Setter
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @JsonView(Views.FileInfoView.class)
+    @JsonView({ Views.FileInfoView.class, Views.FileInfoViewAdmin.class })
     private Long id;
     @NotBlank
-     @JsonView(Views.FileInfoView.class)
+    @JsonView({ Views.FileInfoView.class, Views.FileInfoViewAdmin.class })
     private String categoryName;
 
     @JsonIgnore
